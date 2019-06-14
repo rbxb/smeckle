@@ -17,7 +17,7 @@ func convertNRGBA(c color.NRGBA) color.RGBA {
 	return color.RGBA{c.R, c.G, c.B, 255}
 }
 
-func Decode(r io.ReadSeeker) (image.Image, error) {
+func Decode(r io.ReadSeeker) (image.Image, image.Image, error) {
 	r.Seek(48,0)
 
 	var mipCount uint32
@@ -65,5 +65,5 @@ func Decode(r io.ReadSeeker) (image.Image, error) {
 			specImg.Set(x,y,specPixel)
 		}
 	}
-	return colorImg, nil
+	return colorImg, specImg, nil
 }
