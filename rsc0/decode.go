@@ -19,7 +19,7 @@ const (
 type datatype struct {
 	usage, unkown, storedAs byte
 	valueCount int
-	offset int
+	offset int64
 }
 
 func Decode(r io.ReadSeeker) (* model.Model, error) {
@@ -134,42 +134,39 @@ func Decode(r io.ReadSeeker) (* model.Model, error) {
 		if err := binary.Read(r, binary.LittleEndian, &offset); err != nil {
 			panic(err)
 		}
-		datatypes[i].offset = int(offset)
+		datatypes[i].offset = int64(offset)
 	}
 	//Populate the datatypes.
 
 	for i := 0; i < vertCount; i++ {
-		b := make([]byte, chunkSize)
-		if _, err := r.Read(b); err != nil {
-			panic(err)
-		}
-		buf := bytes.NewBuffer(b)
+		chunkPos, _ := r.Seek(0,1)
 		for _, dt := range datatypes {
+			r.Seek(chunkPos + dt.offset,0)
 			switch dt.usage {
 			case VERTEX_CHUNK_USAGE_POSITION:
 				switch dt.storedAs {
 				case VERTEX_CHUNK_STORED_AS_FLOAT32:
-					if err := binary.Read(buf, binary.LittleEndian, m.Verts[i*3+0:i*3+3]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, m.Verts[i*3+0:i*3+3]); err != nil {
 						panic(err)
 					}
 				}
 			case VERTEX_CHUNK_USAGE_NORMAL:
 				switch dt.storedAs {
 				case VERTEX_CHUNK_STORED_AS_FLOAT32:
-					if err := binary.Read(buf, binary.LittleEndian, m.Norms[i*3+0:i*3+3]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, m.Norms[i*3+0:i*3+3]); err != nil {
 						panic(err)
 					}
 				}
 			case VERTEX_CHUNK_USAGE_UV:
 				switch dt.storedAs {
 				case VERTEX_CHUNK_STORED_AS_FLOAT32:
-					if err := binary.Read(buf, binary.LittleEndian, m.UVs[i*2+0:i*2+2]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, m.UVs[i*2+0:i*2+2]); err != nil {
 						panic(err)
 					}
 					m.UVs[i*2+1] = 1 - m.UVs[i*2+1]
 				case VERTEX_CHUNK_STORED_AS_UINT8:
 					b := make([]uint8, 2)
-					if err := binary.Read(buf, binary.LittleEndian, b); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, b); err != nil {
 						panic(err)
 					}
 					m.UVs[i*2+0] = float32(b[0]) / 255
@@ -177,6 +174,7 @@ func Decode(r io.ReadSeeker) (* model.Model, error) {
 				}
 			}
 		}
+		r.Seek(chunkPos + int64(chunkSize),0)
 	}
 	//Read the vertex chunks.
 

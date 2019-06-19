@@ -7,12 +7,10 @@ import (
 	"path/filepath"
 	"github.com/rbxb/smeckle/rsc0"
 	"github.com/rbxb/smeckle/wavefront"
-	"github.com/rbxb/workload"
 )
 
 var source string
 var ex string
-var distr * workload.Distr
 
 func init() {
 	flag.StringVar(&source, "source", "./source", "The source directory or file. (./source)")
@@ -27,42 +25,23 @@ func main() {
 		panic(err)
 	}
 	if info.IsDir() {
-		distr = workload.NewDistr(4,8,callback)
-		if err := filepath.Walk(source, walker); err != nil {
+		if err := filepath.Walk(source, convertFile); err != nil {
 			panic(err)
 		}
 	} else {
-		if err := convertFile(source, info); err != nil {
+		if err := convertFile(source, info, nil); err != nil {
 			panic(err)
 		}
 	}
 }
 
-func walker(path string, info os.FileInfo, err error) error {
+func convertFile(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
 	if info.IsDir() {
 		return nil
 	}
-	var a interface{} = &action{path,info}
-	distr.Add(&a)
-	return nil
-}
-
-type action struct {
-	path string
-	info os.FileInfo
-}
-
-func callback(a * interface{}) {
-	ac := (*a).(*action)
-	if err := convertFile(ac.path, ac.info); err != nil {
-		panic(err)
-	}
-}
-
-func convertFile(path string, info os.FileInfo) error {
 	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
 	defer f.Close()
 	if err != nil {
