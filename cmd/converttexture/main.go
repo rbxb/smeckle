@@ -74,7 +74,7 @@ func convertFile(path string, info os.FileInfo, err error) error {
 		return err
 	}
 	diffuseName := filepath.Join(ex, info.Name() + ".png")
-	specularName := filepath.Join(ex, "specular", info.Name() + ".png")
+	specularName := filepath.Join(ex, "specular", info.Name() + "_spec.png")
 	buf := bytes.NewBuffer(nil)
 	if err := png.Encode(diffuse, buf); err != nil {
 		return err
