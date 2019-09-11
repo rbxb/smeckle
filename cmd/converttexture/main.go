@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"bytes"
+	"sync"
 	"path/filepath"
 	"github.com/rbxb/smeckle/webp"
 	"github.com/rbxb/smeckle/png"
@@ -11,10 +12,15 @@ import (
 
 var source string
 var ex string
+var threads int
+
+var limit chan byte
+var wait sync.WaitGroup
 
 func init() {
 	flag.StringVar(&source, "source", "./source", "The source directory or file. (./source)")
 	flag.StringVar(&ex, "ex", "./ex", "The save directory. (./ex)")
+	flag.IntVar(&threads, "threads", 8, "The number of threads to run on. (8)")
 }
 
 func main() {
@@ -25,14 +31,36 @@ func main() {
 		panic(err)
 	}
 	if info.IsDir() {
-		if err := filepath.Walk(source, convertFile); err != nil {
+		limit = make(chan byte, threads)
+		wait = sync.WaitGroup{}
+		if err := filepath.Walk(source, walker); err != nil {
 			panic(err)
 		}
+		wait.Wait()
 	} else {
-		if err := convertFile(source, info, nil); err != nil {
+		if err := convertFile(source, info); err != nil {
 			panic(err)
 		}
 	}
+}
+
+func walker(path string, info os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return nil
+	}
+	limit <- 0
+	wait.Add(1)
+	go func(){
+		if err := convertFile(path, info); err != nil {
+			panic(err)
+		}
+		<- limit
+		wait.Done()
+	}()
+	return nil
 }
 
 func writeFile(name string, buf * bytes.Buffer) error {
@@ -47,13 +75,7 @@ func writeFile(name string, buf * bytes.Buffer) error {
 	return err
 }
 
-func convertFile(path string, info os.FileInfo, err error) error {
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return nil
-	}
+func convertFile(path string, info os.FileInfo) error {
 	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
 	defer f.Close()
 	if err != nil {
