@@ -31,9 +31,9 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&dirA, "a", "./a", "The first directory that is walked. (./a)")
-	flag.StringVar(&dirB, "b", "./b", "The second directory that is walked. (./b)")
-	flag.StringVar(&destination, "diff", "./diff", "The save directory. (./diff)")
+	flag.StringVar(&dirA, "a", "./a", "The first directory that is walked.")
+	flag.StringVar(&dirB, "b", "./b", "The second directory that is walked.")
+	flag.StringVar(&destination, "diff", "./diff", "The save directory.")
 }
 
 func preWalker(path string, info os.FileInfo, err error) error {

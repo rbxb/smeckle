@@ -18,9 +18,9 @@ var limit chan byte
 var wait sync.WaitGroup
 
 func init() {
-	flag.StringVar(&source, "source", "./source", "The source directory or file. (./source)")
-	flag.StringVar(&ex, "ex", "./ex", "The save directory. (./ex)")
-	flag.IntVar(&threads, "threads", 8, "The number of threads to run on. (8)")
+	flag.StringVar(&source, "source", "./source", "The source directory or file.")
+	flag.StringVar(&ex, "ex", "./ex", "The save directory.")
+	flag.IntVar(&threads, "threads", 8, "The number of threads to run on.")
 }
 
 func main() {
