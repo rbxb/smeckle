@@ -47,7 +47,7 @@ func Decode(r io.ReadSeeker) *Model {
 	model := &Model{}
 
 	// Skip the first 36 bytes.
-	// I don't know what these bytes do.
+	// I don't know what these bytes are for.
 	r.Seek(36, 1)
 
 	// Read the number of materials used by the model.
