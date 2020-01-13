@@ -1,5 +1,5 @@
-// Package webp is used to unpack WebP textures.
-package webp
+// Package texture is used to unpack WebP textures.
+package texture
 
 import (
 	"image"
