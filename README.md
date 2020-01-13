@@ -24,7 +24,8 @@ Or you can download precompiled binaries for Windows:
 
 ## convertmodel
 
-convertmodel converts models from SEMC's format to a wavefront (.obj) file.
+convertmodel converts models from SEMC's format to a wavefront (.obj) file.  
+Run convertmodel on the game's source files to extract the 3D models.
 
 `-source` The directory or file that you want to convert. Defaults to `./source`.  
 `-ex` The save directory. Defaults to `./ex`.  
