@@ -1,5 +1,5 @@
-// Package rsc0 is used to decode 3D models from Super Evil Megacorp's format.
-package rsc0
+// Package model is used to decode 3D models from Super Evil Megacorp's format.
+package model
 
 import (
 	"bytes"
@@ -44,7 +44,7 @@ type vectorHeader struct {
 
 // Decode reads model data that is encoded in SEMC's format from a reader and puts it in a model object.
 func Decode(r io.ReadSeeker) *Model {
-	m := &Model{}
+	model := &Model{}
 
 	// Skip the first 36 bytes.
 	// I don't know what these bytes do.
@@ -78,7 +78,7 @@ func Decode(r io.ReadSeeker) *Model {
 	}
 
 	// Set the name of the model to the name of the first material that is referenced.
-	m.Name = materials[0]
+	model.Name = materials[0]
 
 	// Read the number of objects in the file.
 	// Each object is it's own 3D model made of a collection of faces.
@@ -86,7 +86,7 @@ func Decode(r io.ReadSeeker) *Model {
 	if err := binary.Read(r, binary.LittleEndian, &objectCount); err != nil {
 		panic(err)
 	}
-	m.Objects = make([]Object, objectCount)
+	model.Objects = make([]Object, objectCount)
 
 	// Skip 2 bytes.
 	// I don't know what these bytes are for (Maybe texture count).
@@ -95,7 +95,7 @@ func Decode(r io.ReadSeeker) *Model {
 	// Read the number of face indices that each object has.
 	// Each face has three indices.
 	// Each index corresponds to a vertex.
-	for i := range m.Objects {
+	for i := range model.Objects {
 		// Skip 4 bytes.
 		// I don't know what these bytes are for.
 		r.Seek(4, 1)
@@ -107,7 +107,7 @@ func Decode(r io.ReadSeeker) *Model {
 
 		// Create the face index buffer.
 		// Every three indices represents a face.
-		m.Objects[i].Faces = make([]int, int(faces))
+		model.Objects[i].Faces = make([]int, int(faces))
 
 		// Skip 63 bytes.
 		// I don't know what these bytes are for.
@@ -123,9 +123,9 @@ func Decode(r io.ReadSeeker) *Model {
 	if err := binary.Read(r, binary.LittleEndian, &vertexCount); err != nil {
 		panic(err)
 	}
-	m.Verts = make([]float32, int(vertexCount)*3)
-	m.UVs = make([]float32, int(vertexCount)*2)
-	m.Norms = make([]float32, int(vertexCount)*3)
+	model.Verts = make([]float32, int(vertexCount)*3)
+	model.UVs = make([]float32, int(vertexCount)*2)
+	model.Norms = make([]float32, int(vertexCount)*3)
 
 	// Skip 6 bytes.
 	// I don't know what these bytes are for.
@@ -172,7 +172,7 @@ func Decode(r io.ReadSeeker) *Model {
 			case VertexChunkUsagePosition:
 				switch vector.storedAs {
 				case VertexChunkStoredAsFloat32:
-					if err := binary.Read(r, binary.LittleEndian, m.Verts[i*3+0:i*3+3]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, model.Verts[i*3+0:i*3+3]); err != nil {
 						panic(err)
 					}
 				}
@@ -180,7 +180,7 @@ func Decode(r io.ReadSeeker) *Model {
 			case VertexChunkUsageNormal:
 				switch vector.storedAs {
 				case VertexChunkStoredAsFloat32:
-					if err := binary.Read(r, binary.LittleEndian, m.Norms[i*3+0:i*3+3]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, model.Norms[i*3+0:i*3+3]); err != nil {
 						panic(err)
 					}
 				}
@@ -188,17 +188,17 @@ func Decode(r io.ReadSeeker) *Model {
 			case VertexChunkUsageUV:
 				switch vector.storedAs {
 				case VertexChunkStoredAsFloat32:
-					if err := binary.Read(r, binary.LittleEndian, m.UVs[i*2+0:i*2+2]); err != nil {
+					if err := binary.Read(r, binary.LittleEndian, model.UVs[i*2+0:i*2+2]); err != nil {
 						panic(err)
 					}
-					m.UVs[i*2+1] = 1 - m.UVs[i*2+1]
+					model.UVs[i*2+1] = 1 - model.UVs[i*2+1]
 				case VertexChunkStoredAsUint8:
 					b := make([]uint8, 2)
 					if err := binary.Read(r, binary.LittleEndian, b); err != nil {
 						panic(err)
 					}
-					m.UVs[i*2+0] = float32(b[0]) / 255
-					m.UVs[i*2+1] = 1 - float32(b[1])/255
+					model.UVs[i*2+0] = float32(b[0]) / 255
+					model.UVs[i*2+1] = 1 - float32(b[1])/255
 				}
 			}
 		}
@@ -209,7 +209,7 @@ func Decode(r io.ReadSeeker) *Model {
 
 	// Read the face indices of each object.
 	// Each face index is a reference to a vertex.
-	for i, object := range m.Objects {
+	for i, object := range model.Objects {
 		for face := range object.Faces {
 			// The number of bytes used to store the index is dependent on the number of vertices.
 			if vertexCount <= 255 {
@@ -217,22 +217,22 @@ func Decode(r io.ReadSeeker) *Model {
 				if err := binary.Read(r, binary.LittleEndian, &b); err != nil {
 					panic(err)
 				}
-				m.Objects[i].Faces[face] = int(b)
+				model.Objects[i].Faces[face] = int(b)
 			} else if vertexCount <= 65535 {
 				var b uint16
 				if err := binary.Read(r, binary.LittleEndian, &b); err != nil {
 					panic(err)
 				}
-				m.Objects[i].Faces[face] = int(b)
+				model.Objects[i].Faces[face] = int(b)
 			} else {
 				var b uint32
 				if err := binary.Read(r, binary.LittleEndian, &b); err != nil {
 					panic(err)
 				}
-				m.Objects[i].Faces[face] = int(b)
+				model.Objects[i].Faces[face] = int(b)
 			}
 		}
 	}
 
-	return m
+	return model
 }

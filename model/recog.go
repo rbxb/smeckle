@@ -1,4 +1,4 @@
-package rsc0
+package model
 
 import (
 	"io"
