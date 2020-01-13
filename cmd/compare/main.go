@@ -1,25 +1,27 @@
 package main
 
 import (
-	"flag"
-	"path/filepath"
-	"os"
 	"crypto/sha256"
+	"flag"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 )
+
+type sum [32]byte
 
 var dirA string
 var dirB string
 var destination string
 var count int
-var sums [][32]byte
+var sums []sum
 
 func main() {
 	flag.Parse()
 	if err := filepath.Walk(dirA, preWalker); err != nil {
 		panic(err)
 	}
-	sums = make([][32]byte, count)
+	sums = make([]sum, count)
 	count = 0
 	if err := filepath.Walk(dirA, firstWalker); err != nil {
 		panic(err)
@@ -77,7 +79,7 @@ func secondWalker(path string, info os.FileInfo, err error) error {
 	}
 	sum := sha256.Sum256(b)
 	for _, s := range sums {
-		if compareSlice(sum, s) {
+		if compareSums(sum, s) {
 			return nil
 		}
 	}
@@ -97,11 +99,20 @@ func secondWalker(path string, info os.FileInfo, err error) error {
 	return nil
 }
 
-func compareSlice(a, b [32]byte) bool {
+func compareSums(a, b sum) bool {
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
 	return true
+}
+
+func calculateSum(path string) (*sum, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	s := sha256.Sum256(b)
+	return (*sum)(&s), nil
 }
