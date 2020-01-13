@@ -42,8 +42,8 @@ type vectorHeader struct {
 	offset     int64
 }
 
-// Decode reads model data that is encoded in SEMC's format from a reader and puts it in a model object.
-func Decode(r io.ReadSeeker) *Model {
+// ConvertModel reads model data that is encoded in SEMC's format from a reader and puts it in a model object.
+func ConvertModel(r io.ReadSeeker) *Model {
 	model := &Model{}
 
 	// Skip the first 36 bytes.

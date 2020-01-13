@@ -18,8 +18,8 @@ func convertNRGBA(c color.NRGBA) color.RGBA {
 	return color.RGBA{c.R, c.G, c.B, 255}
 }
 
-// Decode reads a WebP from the reader and returns color and specular image objects.
-func Decode(r io.ReadSeeker) (image.Image, image.Image) {
+// ConvertTexture reads a WebP from the reader and returns color and specular image objects.
+func ConvertTexture(r io.ReadSeeker) (image.Image, image.Image) {
 	/*
 		// Skip 48 bytes.
 		// I don't know what these bytes are for.
@@ -46,7 +46,7 @@ func Decode(r io.ReadSeeker) (image.Image, image.Image) {
 	*/
 
 	// I don't care about mipmaps. I only need the first one.
-	r.Seek(84, 0)
+	r.Seek(32, 0)
 
 	// Read the WebP data.
 	img, err := webp.Decode(r)
