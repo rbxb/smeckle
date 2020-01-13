@@ -1,13 +1,16 @@
 package main
 
 import (
-	"flag"
-	"os"
 	"bytes"
-	"sync"
+	"flag"
+	"image/png"
+	"io"
+	"os"
 	"path/filepath"
-	"github.com/rbxb/smeckle/webp"
-	"github.com/rbxb/smeckle/png"
+	"sync"
+
+	"github.com/rbxb/smeckle/texture"
+	"github.com/rbxb/smeckle/walker"
 )
 
 var source string
@@ -26,44 +29,54 @@ func init() {
 func main() {
 	flag.Parse()
 	ex = filepath.Join(ex, "textures")
-	info, err := os.Stat(source)
+	walker.Walk(source, threads, convertFile)
+}
+
+func convertFile(path string, info os.FileInfo) {
+	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
+	defer f.Close()
 	if err != nil {
 		panic(err)
 	}
-	if info.IsDir() {
-		limit = make(chan byte, threads)
-		wait = sync.WaitGroup{}
-		if err := filepath.Walk(source, walker); err != nil {
-			panic(err)
-		}
-		wait.Wait()
-	} else {
-		if err := convertFile(source, info); err != nil {
-			panic(err)
-		}
+	if !isTexture(f) {
+		return
+	}
+	f.Seek(0, 0)
+	b := make([]byte, info.Size())
+	if _, err := f.Read(b); err != nil {
+		panic(err)
+	}
+	f.Close()
+	r := bytes.NewReader(b)
+	diffuse, specular := texture.ConvertTexture(r)
+	diffuseName := filepath.Join(ex, info.Name()+".png")
+	specularName := filepath.Join(ex, "specular", info.Name()+"_spec.png")
+	buf := bytes.NewBuffer(nil)
+	if err := png.Encode(buf, diffuse); err != nil {
+		panic(err)
+	}
+	if err := writeFile(diffuseName, buf); err != nil {
+		panic(err)
+	}
+	buf = bytes.NewBuffer(nil)
+	if err := png.Encode(buf, specular); err != nil {
+		panic(err)
+	}
+	if err := writeFile(specularName, buf); err != nil {
+		panic(err)
 	}
 }
 
-func walker(path string, info os.FileInfo, err error) error {
-	if err != nil {
-		return err
+func isTexture(r io.ReadSeeker) bool {
+	b := make([]byte, 45)
+	r.Read(b)
+	if string(b[32:36]) == "RIFF" && string(b[40:44]) == "WEBP" {
+		return true
 	}
-	if info.IsDir() {
-		return nil
-	}
-	limit <- 0
-	wait.Add(1)
-	go func(){
-		if err := convertFile(path, info); err != nil {
-			panic(err)
-		}
-		<- limit
-		wait.Done()
-	}()
-	return nil
+	return false
 }
 
-func writeFile(name string, buf * bytes.Buffer) error {
+func writeFile(name string, buf *bytes.Buffer) error {
 	os.MkdirAll(filepath.Dir(name), os.ModePerm)
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
@@ -73,43 +86,4 @@ func writeFile(name string, buf * bytes.Buffer) error {
 	f.Truncate(int64(buf.Len()))
 	_, err = buf.WriteTo(f)
 	return err
-}
-
-func convertFile(path string, info os.FileInfo) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0755)
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	if !webp.Recog(f) {
-		return nil
-	}
-	f.Seek(0,0)
-	b := make([]byte, info.Size())
-	if _, err := f.Read(b); err != nil {
-		return err
-	}
-	f.Close()
-	r := bytes.NewReader(b)
-	diffuse, specular, err := webp.Decode(r)
-	if err != nil {
-		return err
-	}
-	diffuseName := filepath.Join(ex, info.Name() + ".png")
-	specularName := filepath.Join(ex, "specular", info.Name() + "_spec.png")
-	buf := bytes.NewBuffer(nil)
-	if err := png.Encode(diffuse, buf); err != nil {
-		return err
-	}
-	if err := writeFile(diffuseName, buf); err != nil {
-		return err
-	}
-	buf = bytes.NewBuffer(nil)
-	if err := png.Encode(specular, buf); err != nil {
-		return err
-	}
-	if err := writeFile(specularName, buf); err != nil {
-		return err
-	}
-	return nil
 }
